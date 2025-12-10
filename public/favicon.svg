@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="#272822"/>
+  
+  <!-- Outer ring -->
+  <circle cx="32" cy="32" r="28" fill="none" stroke="#A6E22E" stroke-width="2"/>
+  
+  <!-- Flow lines representing data flow -->
+  <g stroke="#66D9EF" stroke-width="2.5" fill="none" stroke-linecap="round">
+    <!-- Top to center -->
+    <path d="M 32 12 L 32 24" stroke-dasharray="2,2">
+      <animate attributeName="stroke-dashoffset" from="0" to="4" dur="1s" repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Left to center -->
+    <path d="M 14 32 L 24 32" stroke-dasharray="2,2">
+      <animate attributeName="stroke-dashoffset" from="0" to="4" dur="1s" repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Right to center -->
+    <path d="M 52 32 L 40 32" stroke-dasharray="2,2">
+      <animate attributeName="stroke-dashoffset" from="0" to="4" dur="1s" repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Bottom from center -->
+    <path d="M 32 40 L 32 52" stroke-dasharray="2,2">
+      <animate attributeName="stroke-dashoffset" from="0" to="4" dur="1s" repeatCount="indefinite"/>
+    </path>
+  </g>
+  
+  <!-- Center node (main hub) -->
+  <circle cx="32" cy="32" r="8" fill="#A6E22E"/>
+  <circle cx="32" cy="32" r="6" fill="#272822"/>
+  
+  <!-- Small nodes at connection points -->
+  <circle cx="32" cy="12" r="3" fill="#FD971F"/>
+  <circle cx="14" cy="32" r="3" fill="#FD971F"/>
+  <circle cx="50" cy="32" r="3" fill="#FD971F"/>
+  <circle cx="32" cy="52" r="3" fill="#FD971F"/>
+  
+  <!-- Corner accent nodes -->
+  <circle cx="18" cy="18" r="2" fill="#F92672" opacity="0.8"/>
+  <circle cx="46" cy="18" r="2" fill="#F92672" opacity="0.8"/>
+  <circle cx="18" cy="46" r="2" fill="#F92672" opacity="0.8"/>
+  <circle cx="46" cy="46" r="2" fill="#F92672" opacity="0.8"/>
+  
+  <!-- Initials "MF" (Moirai Flow) -->
+  <text x="32" y="36" font-family="monospace" font-size="10" font-weight="bold" fill="#A6E22E" text-anchor="middle">MF</text>
+</svg>
