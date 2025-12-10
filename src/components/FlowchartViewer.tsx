@@ -9,6 +9,8 @@ interface FlowchartViewerProps {
   exchangeName: string;
   onClose: () => void;
   isLoading?: boolean;
+  direction?: 'LR' | 'TD';
+  onDirectionChange?: (direction: 'LR' | 'TD') => void;
 }
 
 mermaid.initialize({
@@ -52,6 +54,8 @@ export function FlowchartViewer({
   exchangeName,
   onClose,
   isLoading,
+  direction = 'LR',
+  onDirectionChange,
 }: FlowchartViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -182,6 +186,30 @@ export function FlowchartViewer({
                 <Maximize2 className="h-4 w-4" />
               </Button>
             </div>
+
+            {/* Direction Toggle */}
+            {onDirectionChange && (
+              <div className="hidden sm:flex items-center gap-1 bg-muted rounded-lg p-1">
+                <Button
+                  variant={direction === 'LR' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-8 px-3 text-xs font-mono"
+                  onClick={() => onDirectionChange('LR')}
+                  title="Horizontal layout"
+                >
+                  LR
+                </Button>
+                <Button
+                  variant={direction === 'TD' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-8 px-3 text-xs font-mono"
+                  onClick={() => onDirectionChange('TD')}
+                  title="Vertical layout"
+                >
+                  TD
+                </Button>
+              </div>
+            )}
 
             <div className="hidden sm:flex items-center gap-1 bg-muted/50 rounded-lg px-2 py-1">
               <Move className="h-3 w-3 text-muted-foreground" />

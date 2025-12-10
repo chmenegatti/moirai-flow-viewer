@@ -9,6 +9,7 @@ export interface ExchangesResponse {
 export interface FlowchartRequest {
   exchange: string;
   filename: string;
+  direction?: 'LR' | 'TD';
 }
 
 export interface FlowchartResponse {

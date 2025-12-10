@@ -77,7 +77,7 @@ export async function fetchExchanges(): Promise<ExchangesResponse> {
   return response.json();
 }
 
-export async function fetchFlowchart(exchange: string): Promise<string> {
+export async function fetchFlowchart(exchange: string, direction: 'LR' | 'TD' = 'LR'): Promise<string> {
   if (USE_MOCK) {
     // Simulate network delay
     await new Promise((resolve) => setTimeout(resolve, 800));
@@ -92,6 +92,7 @@ export async function fetchFlowchart(exchange: string): Promise<string> {
   const body: FlowchartRequest = {
     exchange,
     filename: sanitizedFilename,
+    direction,
   };
 
   const response = await fetch(`${API_BASE}/flowchart`, {

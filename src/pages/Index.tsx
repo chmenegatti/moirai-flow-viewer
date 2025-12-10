@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedExchange, setSelectedExchange] = useState<string | null>(null);
+  const [flowDirection, setFlowDirection] = useState<'LR' | 'TD'>('LR');
   const { toast } = useToast();
 
   const {
@@ -26,7 +27,8 @@ const Index = () => {
   });
 
   const flowchartMutation = useMutation({
-    mutationFn: fetchFlowchart,
+    mutationFn: ({ exchange, direction }: { exchange: string; direction: 'LR' | 'TD' }) =>
+      fetchFlowchart(exchange, direction),
     onError: (error) => {
       toast({
         title: "Error loading flowchart",
@@ -38,12 +40,19 @@ const Index = () => {
 
   const handleExchangeClick = (exchange: string) => {
     setSelectedExchange(exchange);
-    flowchartMutation.mutate(exchange);
+    flowchartMutation.mutate({ exchange, direction: flowDirection });
   };
 
   const handleCloseViewer = () => {
     setSelectedExchange(null);
     flowchartMutation.reset();
+  };
+
+  const handleDirectionChange = (direction: 'LR' | 'TD') => {
+    setFlowDirection(direction);
+    if (selectedExchange) {
+      flowchartMutation.mutate({ exchange: selectedExchange, direction });
+    }
   };
 
   const filteredExchanges = useMemo(() => {
@@ -114,6 +123,8 @@ const Index = () => {
           content={flowchartMutation.data || ""}
           exchangeName={selectedExchange}
           onClose={handleCloseViewer}
+          direction={flowDirection}
+          onDirectionChange={handleDirectionChange}
           isLoading={flowchartMutation.isPending}
         />
       )}
