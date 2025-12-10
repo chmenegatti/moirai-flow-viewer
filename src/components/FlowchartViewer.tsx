@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { X, Download, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { X, Download, ZoomIn, ZoomOut, Maximize2, Move } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import mermaid from "mermaid";
@@ -14,6 +14,14 @@ interface FlowchartViewerProps {
 mermaid.initialize({
   startOnLoad: false,
   theme: "dark",
+  flowchart: {
+    htmlLabels: true,
+    curve: "basis",
+    padding: 20,
+    nodeSpacing: 100,
+    rankSpacing: 100,
+    diagramPadding: 20,
+  },
   themeVariables: {
     primaryColor: "#A6E22E",
     primaryTextColor: "#F8F8F2",
@@ -35,6 +43,7 @@ mermaid.initialize({
     actorTextColor: "#F8F8F2",
     signalColor: "#66D9EF",
     signalTextColor: "#F8F8F2",
+    fontSize: "16px",
   },
 });
 
@@ -45,17 +54,58 @@ export function FlowchartViewer({
   isLoading,
 }: FlowchartViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = useState(1);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1.5);
   const [svgContent, setSvgContent] = useState<string>("");
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [startPanPosition, setStartPanPosition] = useState({ x: 0, y: 0 });
+
+  // Pan handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return; // Only left click
+    setIsPanning(true);
+    setStartPanPosition({
+      x: e.clientX - panPosition.x,
+      y: e.clientY - panPosition.y,
+    });
+  }, [panPosition]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isPanning) return;
+    setPanPosition({
+      x: e.clientX - startPanPosition.x,
+      y: e.clientY - startPanPosition.y,
+    });
+  }, [isPanning, startPanPosition]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsPanning(false);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsPanning(false);
+  }, []);
+
+  const handleResetView = useCallback(() => {
+    setZoom(1.5);
+    setPanPosition({ x: 0, y: 0 });
+  }, []);
 
   useEffect(() => {
     async function renderDiagram() {
-      if (!content) return;
+      if (!content) {
+        setRenderError("No content to display");
+        return;
+      }
+
+      // Ensure content is a string
+      const contentStr = typeof content === 'string' ? content : String(content);
 
       // Check if content is SVG
-      if (content.trim().startsWith("<svg") || content.trim().startsWith("<?xml")) {
-        setSvgContent(content);
+      if (contentStr.trim().startsWith("<svg") || contentStr.trim().startsWith("<?xml")) {
+        setSvgContent(contentStr);
         setRenderError(null);
         return;
       }
@@ -63,7 +113,7 @@ export function FlowchartViewer({
       // Try to render as Mermaid
       try {
         const id = `mermaid-${Date.now()}`;
-        const { svg } = await mermaid.render(id, content);
+        const { svg } = await mermaid.render(id, contentStr);
         setSvgContent(svg);
         setRenderError(null);
       } catch (error) {
@@ -86,9 +136,8 @@ export function FlowchartViewer({
     URL.revokeObjectURL(url);
   };
 
-  const handleZoomIn = () => setZoom((z) => Math.min(z + 0.25, 3));
-  const handleZoomOut = () => setZoom((z) => Math.max(z - 0.25, 0.25));
-  const handleResetZoom = () => setZoom(1);
+  const handleZoomIn = () => setZoom((z) => Math.min(z + 0.5, 6));
+  const handleZoomOut = () => setZoom((z) => Math.max(z - 0.5, 0.5));
 
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md animate-fade-in">
@@ -127,10 +176,16 @@ export function FlowchartViewer({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                onClick={handleResetZoom}
+                onClick={handleResetView}
+                title="Reset view"
               >
                 <Maximize2 className="h-4 w-4" />
               </Button>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-1 bg-muted/50 rounded-lg px-2 py-1">
+              <Move className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Drag to pan</span>
             </div>
 
             <Button
@@ -157,14 +212,24 @@ export function FlowchartViewer({
       </header>
 
       {/* Content */}
-      <div className="absolute inset-0 top-16 overflow-auto">
+      <div
+        className="absolute inset-0 top-16 overflow-hidden"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        style={{
+          cursor: isPanning ? 'grabbing' : 'grab',
+        }}
+      >
         <div
-          ref={containerRef}
-          className="min-h-full flex items-center justify-center p-8"
+          ref={contentRef}
+          className="min-h-full flex items-center justify-center p-8 w-full h-full"
           style={{
-            transform: `scale(${zoom})`,
+            transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoom})`,
             transformOrigin: "center center",
-            transition: "transform 0.2s ease-out",
+            transition: isPanning ? 'none' : 'transform 0.2s ease-out',
+            willChange: 'transform',
           }}
         >
           {isLoading ? (
@@ -185,7 +250,7 @@ export function FlowchartViewer({
             <div
               className={cn(
                 "bg-card/50 rounded-xl p-8 border border-border",
-                "[&_svg]:max-w-full [&_svg]:h-auto"
+                "[&_svg]:min-w-[800px] [&_svg]:max-w-full [&_svg]:h-auto"
               )}
               dangerouslySetInnerHTML={{ __html: svgContent }}
             />

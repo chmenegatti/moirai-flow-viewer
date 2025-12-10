@@ -1,7 +1,7 @@
 import { ExchangesResponse, FlowchartRequest } from "@/types/exchange";
 
-const API_BASE = "/api";
-const USE_MOCK = true; // Set to false when API is ready
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true" || false;
 
 // Mock data
 const mockExchanges: ExchangesResponse = {
@@ -81,34 +81,46 @@ export async function fetchFlowchart(exchange: string): Promise<string> {
   if (USE_MOCK) {
     // Simulate network delay
     await new Promise((resolve) => setTimeout(resolve, 800));
-    
+
     // Return mock mermaid diagram with exchange name
     return mockMermaidFlowchart.replace("Message Received", `${exchange.split('.').pop()?.toUpperCase() || 'MESSAGE'}`);
   }
 
+  // Sanitize filename to match backend validation (only letters, numbers, underscores, hyphens)
+  const sanitizedFilename = exchange.replace(/[^a-zA-Z0-9_-]/g, '_');
+
   const body: FlowchartRequest = {
     exchange,
-    filename: exchange,
+    filename: sanitizedFilename,
   };
 
   const response = await fetch(`${API_BASE}/flowchart`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Accept": "text/vnd.mermaid, text/plain",
     },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
-    throw new Error("Failed to fetch flowchart");
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to fetch flowchart");
   }
 
   const contentType = response.headers.get("content-type");
-  
-  if (contentType?.includes("image/svg+xml")) {
+
+  // Return Mermaid code as text
+  if (contentType?.includes("text/plain") || contentType?.includes("text/vnd.mermaid")) {
     return response.text();
   }
-  
+
+  // Fallback: try to get from JSON response
   const data = await response.json();
-  return data.content || data;
+
+  if (!data.success) {
+    throw new Error(data.message || "Failed to generate flowchart");
+  }
+
+  throw new Error("Unexpected response format from API");
 }
