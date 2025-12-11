@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { X, Download, ZoomIn, ZoomOut, Maximize2, Move } from "lucide-react";
+import { X, Download, ZoomIn, ZoomOut, Maximize2, Move, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import mermaid from "mermaid";
@@ -65,6 +65,10 @@ export function FlowchartViewer({
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [startPanPosition, setStartPanPosition] = useState({ x: 0, y: 0 });
+  const [showCodeModal, setShowCodeModal] = useState(false);
+  const [codeContent, setCodeContent] = useState<string | null>(null);
+  const [loadingCode, setLoadingCode] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
   // Pan handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -138,6 +142,70 @@ export function FlowchartViewer({
     a.download = `${exchangeName}.svg`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const fetchMermaidSource = async () => {
+    // If the provided content already looks like mermaid (not svg), use it
+    if (content && !content.trim().startsWith("<svg") && !content.trim().startsWith("<?xml")) {
+      return content;
+    }
+
+    // Otherwise request the server for the mermaid source
+    try {
+      setLoadingCode(true);
+      const sanitizedFilename = exchangeName.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const body = {
+        exchange: exchangeName,
+        filename: sanitizedFilename,
+        direction,
+      };
+
+      const res = await fetch(`/api/flowchart`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/vnd.mermaid, text/plain",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to fetch mermaid source");
+      }
+
+      const text = await res.text();
+      return text;
+    } finally {
+      setLoadingCode(false);
+    }
+  };
+
+  const openCodeModal = async () => {
+    setShowCodeModal(true);
+    try {
+      const source = await fetchMermaidSource();
+      setCodeContent(source || "");
+    } catch (err: any) {
+      setCodeContent(`Error loading code: ${err.message || String(err)}`);
+    }
+  };
+
+  const closeCodeModal = () => {
+    setShowCodeModal(false);
+    setCopyStatus(null);
+  };
+
+  const handleCopyCode = async () => {
+    if (!codeContent) return;
+    try {
+      await navigator.clipboard.writeText(codeContent);
+      setCopyStatus("Copied");
+      setTimeout(() => setCopyStatus(null), 2000);
+    } catch (err) {
+      setCopyStatus("Failed to copy");
+      setTimeout(() => setCopyStatus(null), 2000);
+    }
   };
 
   const handleZoomIn = () => setZoom((z) => Math.min(z + 0.5, 6));
@@ -228,6 +296,16 @@ export function FlowchartViewer({
             </Button>
 
             <Button
+              variant="outline"
+              size="sm"
+              className="hidden sm:flex"
+              onClick={openCodeModal}
+            >
+              <Code className="h-4 w-4 mr-2" />
+              Code
+            </Button>
+
+            <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive"
@@ -284,6 +362,41 @@ export function FlowchartViewer({
             />
           ) : null}
         </div>
+        {/* Code Modal */}
+        {showCodeModal && (
+          <div className="fixed inset-0 z-60 bg-black/50 flex items-center justify-center" onClick={closeCodeModal}>
+            <div
+              className="bg-card rounded-lg shadow-lg w-[min(90%,900px)] max-h-[90vh] overflow-auto p-4"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-mono text-sm">Mermaid source</h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="text-xs px-2 py-1 rounded bg-muted/50 hover:bg-muted"
+                    onClick={handleCopyCode}
+                    disabled={loadingCode || !codeContent}
+                  >
+                    {copyStatus || 'Copy'}
+                  </button>
+                  <button className="text-sm p-1" onClick={closeCodeModal} aria-label="Close">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-2">
+                {loadingCode ? (
+                  <div className="text-center text-sm font-mono">Loading...</div>
+                ) : (
+                  <pre className="text-xs font-mono bg-muted rounded p-3 overflow-auto whitespace-pre-wrap">{codeContent}</pre>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
